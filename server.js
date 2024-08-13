@@ -9,9 +9,8 @@ const app = express();
 // Hard-coded JWT secret key (not recommended for production)
 const jwtSecret = 'yourHardcodedSecretKey'; // Replace with your actual secret key
 
-// Set EJS as the templating engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+
+
 
 // Middleware
 app.use(express.json());
