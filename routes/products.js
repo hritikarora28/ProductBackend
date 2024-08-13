@@ -1,111 +1,92 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const router = express.Router();
 const Product = require('../models/Product');
 
-const router = express.Router();
-
-// @route   POST /api/products
-// @desc    Add a new product
-router.post(
-    '/',
-    [
-        body('name').notEmpty().withMessage('Name is required'),
-        body('price').notEmpty().withMessage('Price is required').isNumeric().withMessage('Price must be a number'),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        const { name, price, description = '', tax = 0, discount = 0 } = req.body;
-
-        try {
-            const newProduct = new Product({ name, price, description, tax, discount });
-            const product = await newProduct.save();
-            res.json(product);
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send('Server error');
-        }
-    }
-);
-
-// @route   GET /api/products
-// @desc    Get all products
+// GET all products
 router.get('/', async (req, res) => {
     try {
         const products = await Product.find();
         res.json(products);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Server error');
     }
 });
 
-// @route   GET /api/products/:id
-// @desc    Get product by ID
-router.get('/:id', async (req, res) => {
+// POST add a new product
+router.post('/', async (req, res) => {
+    const { name, price, description, tax, discount } = req.body;
+
+    // Basic validation
+    if (!name || !price) {
+        return res.status(400).json({ msg: 'Name and price are required' });
+    }
+
     try {
-        const product = await Product.findById(req.params.id);
+        const product = new Product({
+            name,
+            price,
+            description: description || '',
+            tax: tax || 0,
+            discount: discount || 0
+        });
+
+        await product.save();
+        res.status(201).json({ msg: 'Product added' });
+    } catch (err) {
+        res.status(500).send('Server error');
+    }
+});
+
+// GET product by ID
+router.get('/:productId', async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.productId);
         if (!product) {
             return res.status(404).json({ msg: 'Product not found' });
         }
         res.json(product);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Server error');
     }
 });
 
-// @route   PUT /api/products/:id
-// @desc    Update a product
-router.put(
-    '/:id',
-    [
-        body('name').notEmpty().withMessage('Name is required'),
-        body('price').notEmpty().withMessage('Price is required').isNumeric().withMessage('Price must be a number'),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
+// PUT update product by ID
+router.put('/:productId', async (req, res) => {
+    const { name, price, description, tax, discount } = req.body;
 
-        const { name, price, description = '', tax = 0, discount = 0 } = req.body;
-
-        try {
-            const product = await Product.findByIdAndUpdate(
-                req.params.id,
-                { name, price, description, tax, discount },
-                { new: true }
-            );
-
-            if (!product) {
-                return res.status(404).json({ msg: 'Product not found' });
-            }
-
-            res.json(product);
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send('Server error');
-        }
-    }
-);
-
-// @route   DELETE /api/products/:id
-// @desc    Delete a product
-router.delete('/:id', async (req, res) => {
     try {
-        const product = await Product.findByIdAndDelete(req.params.id);
+        const product = await Product.findById(req.params.productId);
         if (!product) {
             return res.status(404).json({ msg: 'Product not found' });
         }
+
+        product.name = name || product.name;
+        product.price = price || product.price;
+        product.description = description || product.description;
+        product.tax = tax || product.tax;
+        product.discount = discount || product.discount;
+
+        await product.save();
+        res.json({ msg: 'Product updated' });
+    } catch (err) {
+        res.status(500).send('Server error');
+    }
+});
+
+// DELETE product by ID
+router.delete('/:productId', async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.productId);
+        if (!product) {
+            return res.status(404).json({ msg: 'Product not found' });
+        }
+
+        await product.remove();
         res.json({ msg: 'Product deleted' });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Server error');
     }
 });
 
 module.exports = router;
+
